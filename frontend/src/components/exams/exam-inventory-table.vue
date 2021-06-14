@@ -654,7 +654,7 @@
                         !row.item.booking ||
                         Object.keys(row.item.booking).length === 0
                       "
-                      @click="addCalendarBooking(row.item)"
+                      @click="checkExpiryDateAndAddCalendarBooking(row.item)"
                       >Schedule Exam</b-dropdown-item
                     >
                   </template>
@@ -714,6 +714,31 @@
       </div>
     </div>
     <!--  End of exam display.  -->
+    <div data-app>
+      <v-dialog
+            v-model="expiryNotificationDialog"
+            max-width="290"
+          >
+        <v-card>
+          <v-card-title class="headline">
+            Schedule Exam
+          </v-card-title>
+          <v-card-text>
+            This exam has expired on {{ examExpiryDateScheduling }}. Scheduling is not allowed.
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn
+              color="red darken-1"
+              text
+              @click="expiryNotificationDialog = false"
+            >
+              OK
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+    </div>
   </div>
 </template>
 
@@ -779,13 +804,20 @@ export default class ExamInventoryTable extends Vue {
 
   private readonly showPesticideModal!: any
 
-  //  This might be a duplicate of "calendarEvents" but I'm unsure, so I'm commenting it out instead of deleting it.
-  //  @Getter('calendar_events') private calendar_events!: any;
-  @Getter('examInventory') private examInventory!: any;
-  @Getter('roleCode') private roleCode!: any;
-  @Getter('isIta2Designate') private isIta2Designate!: any;
-  @Getter('isPesticideDesignate') private isPesticideDesignate!: any;
-  @Getter('isOfficeManager') private isOfficeManager!: any;
+  private expiryNotificationDialog: boolean = false
+  private examExpiryDateScheduling: string = ''
+
+  //   ...mapState ({
+  //   showAllPesticide: state => state.addExamModule.showAllPesticideExams,
+  //   showPesticideModal: state => state.addExamModule.uploadPesticideModalVisible
+  // }),
+
+  @Getter('calendar_events') private calendar_events!: any;
+  @Getter('exam_inventory') private exam_inventory!: any;
+  @Getter('role_code') private role_code!: any;
+  @Getter('is_ita2_designate') private is_ita2_designate!: any;
+  @Getter('is_pesticide_designate') private is_pesticide_designate!: any;
+  @Getter('is_office_manager') private is_office_manager!: any;
 
   @Action('getBookings') public getBookings: any
   @Action('getExams') public getExams: any
@@ -963,6 +995,15 @@ export default class ExamInventoryTable extends Vue {
       return this.user.office.office_number
     }
     return ''
+  }
+
+  checkExpiryDateAndAddCalendarBooking (item) {
+    if (moment(item.expiry_date).isValid() && moment(item.expiry_date).isBefore(moment(), 'day')) {
+      this.examExpiryDateScheduling = moment(item.expiry_date).format('MMMM DD, YYYY')
+      this.expiryNotificationDialog = true
+    } else {
+      this.addCalendarBooking(item)
+    }
   }
 
   addCalendarBooking (item) {
@@ -1274,7 +1315,7 @@ export default class ExamInventoryTable extends Vue {
   }
 
   filteredExams () {
-    const examInventory: any = this.examInventory
+    const examInventory: any = this.exam_inventory
     let office_number = this.inventoryFilters.office_number === 'default'
       ? this.user.office.office_number : this.inventoryFilters.office_number
     if (this.inventoryFilters.office_number === 'pesticide_offsite') {
@@ -1894,7 +1935,7 @@ export default class ExamInventoryTable extends Vue {
   }
 
   mounted () {
-    if (this.isPesticideDesignate) {
+    if (this.is_pesticide_designate) {
       const pestFilterOptions = [
         { text: 'Awaiting Upload', value: 'awaiting_upload' },
         { text: 'Awaiting Receipt', value: 'awaiting_receipt' },
